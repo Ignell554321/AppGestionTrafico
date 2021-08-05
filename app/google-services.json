@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "752749468276",
+    "project_id": "app-tesis-fb715",
+    "storage_bucket": "app-tesis-fb715.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:752749468276:android:16d2d72ec05f3ad32d8f21",
+        "android_client_info": {
+          "package_name": "com.example.appgestiontrafico"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "752749468276-pmh3q9m9jbus10gba99jb233gsfjfikm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.appgestiontrafico",
+            "certificate_hash": "9a65bdd4c2e71a124c54eb286d7832e2aa266513"
+          }
+        },
+        {
+          "client_id": "752749468276-01k0u0024hm3co8gpapdipikf0vdpk3q.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZFPLCmuV41PUUN6Bmg_92VQKoEHPr_pw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "752749468276-01k0u0024hm3co8gpapdipikf0vdpk3q.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:orientation="vertical">
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:background="#b3414b"
+        android:padding="8dp"
+        android:src="@drawable/ic_location_off"/>
+
+    <TextView
+        android:id="@+id/text_dialog"
+        android:layout_margin="42dp"
+        android:gravity="center"
+        android:textSize="24sp"
+        android:textColor="@android:color/background_dark"
+        android:text="TEXT"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+    
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="10dp">
+
+        <Button
+            android:id="@+id/btnTrafico"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Trafico"
+            android:background="#293249"
+            android:layout_marginRight="5dp"/>
+
+        <Button
+            android:id="@+id/btnAccidente"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Accidente"
+            android:background="#293249"
+            android:layout_marginRight="5dp"/>
+
+        <Button
+            android:id="@+id/btnObras"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="#293249"
+            android:text="Obras" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:padding="10dp"
+        >
+        <Button
+            android:id="@+id/btn_cancelar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cancelar"
+            />
+
+    </LinearLayout>
+
+
+</LinearLayout>
