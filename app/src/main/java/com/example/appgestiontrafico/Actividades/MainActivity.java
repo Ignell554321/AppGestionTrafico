@@ -34,6 +34,7 @@ import android.widget.Toast;
 
 import com.example.appgestiontrafico.Modelos.Marcador;
 import com.example.appgestiontrafico.R;
+import com.example.appgestiontrafico.Servicios.AutenticacionService;
 import com.example.appgestiontrafico.Servicios.MarcadorService;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -99,6 +100,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private LatLng originLatLng;
     private LatLng destinoLatLng;
     private LatLng mCurrentLatLng;
+
+    private AutenticacionService autenticacionService;
 
 
 
@@ -366,6 +369,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         btn_crear_ruta=findViewById(R.id.btn_Ruta);
         crearMarcador=findViewById(R.id.btn_Marcador);
 
+        autenticacionService=new AutenticacionService();
+
         Query query=marcadorService.getAll(true);
 
         if(!Places.isInitialized()){
@@ -599,6 +604,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void logout(){
+        autenticacionService.CerrarSesion();
+        Intent intent=new Intent(getApplicationContext(), LoginActivity.class);
+        startActivity(intent);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
         Toast.makeText(getApplicationContext(),"Has cerrado sesion",Toast.LENGTH_LONG).show();
     }
 
