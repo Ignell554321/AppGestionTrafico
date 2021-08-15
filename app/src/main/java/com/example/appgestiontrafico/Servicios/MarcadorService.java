@@ -19,16 +19,12 @@ public class MarcadorService {
         return mCollection.document().set(marcador);
     }
 
-    public Query getAll(Boolean activo) {
-        return mCollection.whereArrayContains("activo", activo);
-    }
-
-    public Task<QuerySnapshot> getAll2() {
+    public Task<QuerySnapshot> getAll() {
         return mCollection.get();
     }
 
-    public Query getAllNombre(String nombre) {
-        return mCollection.whereArrayContains("nombre", nombre);
+    public Query getMarcadores() {
+        return mCollection.whereArrayContains("activo", true);
     }
 
 }

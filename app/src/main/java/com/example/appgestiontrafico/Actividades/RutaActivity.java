@@ -1,12 +1,14 @@
 package com.example.appgestiontrafico.Actividades;
 
 import androidx.annotation.DrawableRes;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -15,9 +17,13 @@ import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.appgestiontrafico.R;
+import com.example.appgestiontrafico.Servicios.AutenticacionService;
 import com.example.appgestiontrafico.Servicios.GoogleApiService;
 import com.example.appgestiontrafico.Servicios.MarcadorService;
 import com.example.appgestiontrafico.Utils.DecodePoints;
@@ -75,6 +81,8 @@ public class RutaActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Marker marker;
     private LatLng mCurrentLatLng;
 
+    private AutenticacionService autenticacionService;
+
     LocationCallback mLocationCallback = new LocationCallback() {
 
         @Override
@@ -130,6 +138,8 @@ public class RutaActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         googleApiService = new GoogleApiService(RutaActivity.this);
 
+        autenticacionService=new AutenticacionService();
+
         txt_origen.setText(mExtraOrigen);
         txt_destino.setText(mExtraDestino);
 
@@ -168,7 +178,7 @@ public class RutaActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void obtenerMarcadores() {
-        marcadorService.getAll2().addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
+        marcadorService.getAll().addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
             @Override
             public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
                 for (DocumentSnapshot document : queryDocumentSnapshots.getDocuments()) {
@@ -220,6 +230,30 @@ public class RutaActivity extends AppCompatActivity implements OnMapReadyCallbac
         obtenerMarcadores();
 
         drawRoute();
+    }
+
+    private void logout(){
+        autenticacionService.CerrarSesion();
+        Intent intent=new Intent(getApplicationContext(), LoginActivity.class);
+        startActivity(intent);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
+        Toast.makeText(getApplicationContext(),"Has cerrado sesion",Toast.LENGTH_LONG).show();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+
+        getMenuInflater().inflate(R.menu.driver_menu,menu);
+        return super.onCreateOptionsMenu(menu);
+
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if(item.getItemId()==R.id.action_logout){
+            logout();
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     private BitmapDescriptor bitmapDescriptorFromVector(Context context, @DrawableRes int vectorDrawableResourceId) {

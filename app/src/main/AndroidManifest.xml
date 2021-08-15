@@ -12,7 +12,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.AppGestionTrafico">
-        <activity android:name=".Actividades.MainActivity"></activity>
+        <activity android:name=".Actividades.PerfilActivity"></activity>
+        <activity android:name=".Actividades.MainActivity" />
         <activity android:name=".Actividades.RegistroActivity" />
         <activity android:name=".Actividades.RutaActivity" />
         <activity android:name=".Actividades.MapaConductor" />

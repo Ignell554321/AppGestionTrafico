@@ -5,7 +5,6 @@ public class Usuario {
     private String Id;
     private String NombreCompleto;
     private String correoElectronico;
-    private String contraseña;
 
     public Usuario() {
     }
@@ -34,11 +33,4 @@ public class Usuario {
         this.correoElectronico = correoElectronico;
     }
 
-    public String getContraseña() {
-        return contraseña;
-    }
-
-    public void setContraseña(String contraseña) {
-        this.contraseña = contraseña;
-    }
 }

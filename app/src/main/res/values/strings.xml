@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Gestion de Trafico</string>
+    <string name="transtionname_picture">transitionnamepicture</string>
 </resources>

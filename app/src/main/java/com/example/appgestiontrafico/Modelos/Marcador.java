@@ -1,13 +1,34 @@
 package com.example.appgestiontrafico.Modelos;
 
+import java.text.DateFormat;
+import java.util.Date;
+
 public class Marcador {
 
     private String nombre;
     private Boolean activo;
     private double latitud;
     private double longitud;
+    private String horaInicio;
+    private String horaActualizacion;
 
     public Marcador() {
+    }
+
+    public String getHoraInicio() {
+        return horaInicio;
+    }
+
+    public void setHoraInicio(String horaInicio) {
+        this.horaInicio = horaInicio;
+    }
+
+    public String getHoraActualizacion() {
+        return horaActualizacion;
+    }
+
+    public void setHoraActualizacion(String horaActualizacion) {
+        this.horaActualizacion = horaActualizacion;
     }
 
     public String getNombre() {

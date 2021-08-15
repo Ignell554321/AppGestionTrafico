@@ -68,8 +68,14 @@ import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.maps.android.SphericalUtil;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener, GoogleMap.OnMapLongClickListener {
 
@@ -161,11 +167,24 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void onClick(View v) {
 
+                //HORA INICIO
+                DateFormat dateFormat = new SimpleDateFormat("HH:mm");
+                Date date = new Date();
+
+                //HORA ACTUALIZACION
+                Calendar calendar = Calendar.getInstance();
+                calendar.setTime(date); //FechaBase
+                calendar.add(Calendar.MINUTE, 1); //minutosASumar +10
+                Date fechaSalida = calendar.getTime(); //la fecha sumada.
+
                 Marcador  marcador=new Marcador();
                 marcador.setNombre("Trafico");
                 marcador.setActivo(true);
                 marcador.setLatitud(latLng.latitude);
                 marcador.setLongitud(latLng.longitude);
+                marcador.setHoraInicio(dateFormat.format(date));
+                marcador.setHoraActualizacion(dateFormat.format(fechaSalida));
+
                 marcadorService.create(marcador).addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
@@ -190,11 +209,24 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void onClick(View v) {
 
+                //HORA INICIO
+                DateFormat dateFormat = new SimpleDateFormat("HH:mm");
+                Date date = new Date();
+
+                //HORA ACTUALIZACION
+                Calendar calendar = Calendar.getInstance();
+                calendar.setTime(date); //FechaBase
+                calendar.add(Calendar.MINUTE, 10); //minutosASumar +10
+                Date fechaSalida = calendar.getTime(); //la fecha sumada.
+
                 Marcador  marcador=new Marcador();
                 marcador.setNombre("Accidente");
                 marcador.setActivo(true);
                 marcador.setLatitud(latLng.latitude);
                 marcador.setLongitud(latLng.longitude);
+                marcador.setHoraInicio(dateFormat.format(date));
+                marcador.setHoraActualizacion(dateFormat.format(fechaSalida));
+
                 marcadorService.create(marcador).addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
@@ -218,11 +250,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         btnObras.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+
+                //HORA INICIO
+                DateFormat dateFormat = new SimpleDateFormat("HH:mm");
+                Date date = new Date();
+
+                //HORA ACTUALIZACION
+                Calendar calendar = Calendar.getInstance();
+                calendar.setTime(date); //FechaBase
+                calendar.add(Calendar.MINUTE, 10); //minutosASumar +10
+                Date fechaSalida = calendar.getTime(); //la fecha sumada.
+
                 Marcador  marcador=new Marcador();
                 marcador.setNombre("Obras");
                 marcador.setActivo(true);
                 marcador.setLatitud(latLng.latitude);
                 marcador.setLongitud(latLng.longitude);
+                marcador.setHoraInicio(dateFormat.format(date));
+                marcador.setHoraActualizacion(dateFormat.format(fechaSalida));
+
                 marcadorService.create(marcador).addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
@@ -371,8 +417,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         autenticacionService=new AutenticacionService();
 
-        Query query=marcadorService.getAll(true);
-
         if(!Places.isInitialized()){
             Places.initialize(getApplicationContext(),getResources().getString(R.string.google_maps_key));
         }
@@ -422,24 +466,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
-        marcadorService.getAll(true).addSnapshotListener(new EventListener<QuerySnapshot>() {
-            @Override
-            public void onEvent(@Nullable QuerySnapshot queryDocumentSnapshots, @Nullable FirebaseFirestoreException e) {
-
-                Log.d("ERROR",queryDocumentSnapshots.getDocuments().toString());
-
-                for (DocumentSnapshot document : queryDocumentSnapshots.getDocuments()) {
-
-                    MarkerOptions marker = new MarkerOptions();
-                    LatLng marcador = new LatLng(document.getDouble("latitud"), document.getDouble("longitud"));
-
-                    marker.position(marcador);
-                }
-
-
-            }
-        });
-
         crearMarcador.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -482,30 +508,37 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         autocompleteDestino.setLocationBias(RectangularBounds.newInstance(southSide, northSide));
     }
 
+
     private void obtenerMarcadores(){
-        marcadorService.getAll2().addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
+
+        marcadorService.getAll().addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
             @Override
             public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
                 for (DocumentSnapshot document : queryDocumentSnapshots.getDocuments()) {
 
-                    Log.d("ERROR",document.getDouble("latitud")+"");
-                    MarkerOptions markerOptions = new MarkerOptions();
-                    LatLng marcador = new LatLng(document.getDouble("latitud"), document.getDouble("longitud"));
+                    if(document.getBoolean("activo")){
 
-                    markerOptions.position(marcador);
-                    markerOptions.title(document.getString("nombre"));
-                    if(document.getString("nombre").equals("Trafico")){
-                        markerOptions.icon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_car));
-                    }
-                    if(document.getString("nombre").equals("Obras")){
-                        markerOptions.icon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_obras));
-                    }
-                    if(document.getString("nombre").equals("Accidente")){
-                        markerOptions.icon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_accidente));
+                        Log.d("ERROR",document.getDouble("latitud")+"");
+                        MarkerOptions markerOptions = new MarkerOptions();
+                        LatLng marcador = new LatLng(document.getDouble("latitud"), document.getDouble("longitud"));
+
+                        markerOptions.position(marcador);
+                        markerOptions.title(document.getString("nombre"));
+                        if(document.getString("nombre").equals("Trafico")){
+                            markerOptions.icon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_car));
+                        }
+                        if(document.getString("nombre").equals("Obras")){
+                            markerOptions.icon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_obras));
+                        }
+                        if(document.getString("nombre").equals("Accidente")){
+                            markerOptions.icon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_accidente));
+                        }
+
+                        mMap.addMarker(markerOptions);
+                        // markerOptions.icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_marcador));
                     }
 
-                    mMap.addMarker(markerOptions);
-                    // markerOptions.icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_marcador));
+
                 }
 
             }
@@ -600,7 +633,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if(item.getItemId()==R.id.action_logout){
             logout();
         }
+
+        if(item.getItemId()==R.id.perfilusuario)
+        {
+            perfilUsuario();
+        }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void perfilUsuario(){
+        Intent intent=new Intent(MainActivity.this,PerfilActivity.class);
+        startActivity(intent);
     }
 
     private void logout(){
