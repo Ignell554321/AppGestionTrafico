@@ -44,9 +44,11 @@ public class PerfilActivity extends AppCompatActivity implements View.OnClickLis
 
         jtxtViewNombreUsuario=findViewById(R.id.jtxtViewNombreUsuario);
         jtxtViewCorreoElectronico=findViewById(R.id.jtxtViewCorreoElectronico);
+        //linearLayoutEditarPerfil=findViewById(R.id.)
+
         imgFondo=findViewById(R.id.imgFondo);
         circleImagePerfil=findViewById(R.id.circleImagePerfil);
-        linearLayoutEditarPerfil.setOnClickListener(this);
+       // linearLayoutEditarPerfil.setOnClickListener(this);
         imgFondo.setOnClickListener(this);
         getUsuario();
     }

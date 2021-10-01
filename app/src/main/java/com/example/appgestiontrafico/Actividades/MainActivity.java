@@ -9,18 +9,21 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Debug;
+import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.util.Log;
@@ -33,9 +36,13 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.appgestiontrafico.Modelos.Marcador;
+import com.example.appgestiontrafico.Modelos.MarcadorDoble;
 import com.example.appgestiontrafico.R;
 import com.example.appgestiontrafico.Servicios.AutenticacionService;
+import com.example.appgestiontrafico.Servicios.GoogleApiService;
+import com.example.appgestiontrafico.Servicios.MarcadorDobleService;
 import com.example.appgestiontrafico.Servicios.MarcadorService;
+import com.example.appgestiontrafico.Utils.DecodePoints;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -49,9 +56,12 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.JointType;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.android.gms.maps.model.SquareCap;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
@@ -68,14 +78,22 @@ import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.maps.android.SphericalUtil;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener, GoogleMap.OnMapLongClickListener {
 
@@ -97,6 +115,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private boolean conectado;
 
     private MarcadorService marcadorService;
+    private MarcadorDobleService marcadorDobleService;
     private AutocompleteSupportFragment autocomplete;
     private AutocompleteSupportFragment autocompleteDestino;
     private PlacesClient places;
@@ -107,10 +126,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private LatLng destinoLatLng;
     private LatLng mCurrentLatLng;
 
+    private List<LatLng> listaLatLng=new ArrayList<>();
     private AutenticacionService autenticacionService;
 
+    private GoogleApiService googleApiService;
 
+    private List<LatLng> mPolylineList;
+    private PolylineOptions mPolylineOptions;
 
+    private boolean marcadorSimpleTrafico=false;
+    private int contadorMarcadorSimpleTrafico=0;
+    private List<LatLng> listaMarcadoresTrafico=new ArrayList<>();
 
 
     LocationCallback mLocationCallback = new LocationCallback() {
@@ -146,6 +172,121 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     };
 
 
+    private void  mostrarModalMarcadorTrafico(LatLng latLng){
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+        LayoutInflater inflater = getLayoutInflater();
+        View view = inflater.inflate(R.layout.layout_marcador_trafico, null);
+        builder.setView(view);
+        AlertDialog dialog = builder.create();
+        dialog.show();
+        Button btn_MarcadorTraficoSimple= view.findViewById(R.id.btn_marcador_trafico_simple);
+        Button btn_MarcadorTraficoDoble=view.findViewById(R.id.btn_marcador_trafico_doble);
+
+        btn_MarcadorTraficoSimple.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                guardarMarcadorSimple(latLng,"Tarfico",dialog);
+
+            }
+        });
+
+        btn_MarcadorTraficoDoble.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                dialog.dismiss();
+                contadorMarcadorSimpleTrafico++;
+                listaMarcadoresTrafico.add(latLng);
+                Toast.makeText(MainActivity.this, "Selecciona el lugar final", Toast.LENGTH_LONG).show();
+
+            }
+        });
+
+    }
+
+
+    private void guardarMarcadorSimple(LatLng latLng, String nombreMarcador, Dialog dialog){
+
+        //HORA INICIO
+        DateFormat dateFormat = new SimpleDateFormat("HH:mm");
+        Date date = new Date();
+
+        //HORA ACTUALIZACION
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(date); //FechaBase
+        calendar.add(Calendar.MINUTE, 10); //minutosASumar +10
+        Date fechaSalida = calendar.getTime(); //la fecha sumada.
+
+        Marcador  marcador=new Marcador();
+        marcador.setNombre(nombreMarcador);
+        marcador.setActivo(true);
+        marcador.setLatitud(latLng.latitude);
+        marcador.setLongitud(latLng.longitude);
+        marcador.setHoraInicio(dateFormat.format(date));
+        marcador.setHoraActualizacion(dateFormat.format(fechaSalida));
+
+        marcadorService.create(marcador).addOnCompleteListener(new OnCompleteListener<Void>() {
+
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                if (task.isSuccessful()) {
+
+                    dialog.dismiss();
+                    Toast.makeText(MainActivity.this, "Marcador Almacenado correctamente", Toast.LENGTH_SHORT).show();
+                    obtenerMarcadores();
+
+                }else{
+                    dialog.dismiss();
+                    Toast.makeText(MainActivity.this, "No se pudo almacenar el marcador", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+    }
+
+    private void guardarMarcadorDoble( String nombreMarcador){
+
+        //HORA INICIO
+        DateFormat dateFormat = new SimpleDateFormat("HH:mm");
+        Date date = new Date();
+
+        //HORA ACTUALIZACION
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(date); //FechaBase
+        calendar.add(Calendar.MINUTE, 10); //minutosASumar +10
+        Date fechaSalida = calendar.getTime(); //la fecha sumada.
+
+        MarcadorDoble marcadorDoble= new MarcadorDoble();
+
+        marcadorDoble.setLatitudMarcador1(listaMarcadoresTrafico.get(0).latitude);
+        marcadorDoble.setLongitudMarcador1(listaMarcadoresTrafico.get(0).longitude);
+        marcadorDoble.setLatitudMarcador2(listaMarcadoresTrafico.get(1).latitude);
+        marcadorDoble.setLongitudMarcador2(listaMarcadoresTrafico.get(1).longitude);
+        marcadorDoble.setHoraActualizacion(dateFormat.format(fechaSalida));
+        marcadorDoble.setActivo(true);
+        marcadorDoble.setNombre(nombreMarcador);
+
+        marcadorDobleService.create(marcadorDoble).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+
+                if (task.isSuccessful()) {
+
+                    Toast.makeText(MainActivity.this, "Marcadores Almacenados correctamente", Toast.LENGTH_SHORT).show();
+                    obtenerMarcadores();
+
+                }else{
+
+                    Toast.makeText(MainActivity.this, "No se pudo almacenar el marcador", Toast.LENGTH_SHORT).show();
+                }
+
+            }
+        });
+
+    }
+
+
     private void mostrarDialogoPersonalizado(LatLng latLng) {
 
         AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
@@ -167,39 +308,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void onClick(View v) {
 
-                //HORA INICIO
-                DateFormat dateFormat = new SimpleDateFormat("HH:mm");
-                Date date = new Date();
-
-                //HORA ACTUALIZACION
-                Calendar calendar = Calendar.getInstance();
-                calendar.setTime(date); //FechaBase
-                calendar.add(Calendar.MINUTE, 1); //minutosASumar +10
-                Date fechaSalida = calendar.getTime(); //la fecha sumada.
-
-                Marcador  marcador=new Marcador();
-                marcador.setNombre("Trafico");
-                marcador.setActivo(true);
-                marcador.setLatitud(latLng.latitude);
-                marcador.setLongitud(latLng.longitude);
-                marcador.setHoraInicio(dateFormat.format(date));
-                marcador.setHoraActualizacion(dateFormat.format(fechaSalida));
-
-                marcadorService.create(marcador).addOnCompleteListener(new OnCompleteListener<Void>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Void> task) {
-                        if (task.isSuccessful()) {
-
-                            dialog.dismiss();
-                            Toast.makeText(MainActivity.this, "Marcador Almacenado correctamente", Toast.LENGTH_SHORT).show();
-                            obtenerMarcadores();
-
-                        }else{
-                            dialog.dismiss();
-                            Toast.makeText(MainActivity.this, "No se pudo almacenar el marcador", Toast.LENGTH_SHORT).show();
-                        }
-                    }
-                });
+                if(contadorMarcadorSimpleTrafico==0)
+                {
+                    mostrarModalMarcadorTrafico(latLng);
+                }
+                dialog.dismiss();
 
             }
 
@@ -414,8 +527,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mFusedLocation = LocationServices.getFusedLocationProviderClient(this);
         btn_crear_ruta=findViewById(R.id.btn_Ruta);
         crearMarcador=findViewById(R.id.btn_Marcador);
-
         autenticacionService=new AutenticacionService();
+        marcadorDobleService=new MarcadorDobleService();
+        googleApiService=new GoogleApiService(MainActivity.this);
 
         if(!Places.isInitialized()){
             Places.initialize(getApplicationContext(),getResources().getString(R.string.google_maps_key));
@@ -431,6 +545,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         autocomplete.setHint("Lugar de Origen");
         autocompleteDestino.setHint("Lugar de Destino");
+
 
         autocomplete.setOnPlaceSelectedListener(new PlaceSelectionListener() {
             @Override
@@ -480,7 +595,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 crearRuta();
             }
         });
+        actualizarMarcadores();
+    }
 
+    private void actualizarMarcadores(){
+        final Handler handler= new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                //Toast.makeText(getApplicationContext(), "probando hilo cada 10 seg", Toast.LENGTH_SHORT).show();
+                obtenerMarcadores();
+                obtenerMarcadoresDobles();
+                handler.postDelayed(this,5000);//se ejecutara cada 5 segundos
+            }
+        },5000);//empezara a ejecutarse después de 5 milisegundos
     }
 
     private void crearRuta(){
@@ -508,12 +636,58 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         autocompleteDestino.setLocationBias(RectangularBounds.newInstance(southSide, northSide));
     }
 
+    private void obtenerMarcadoresDobles(){
+        marcadorDobleService.getAll().addOnSuccessListener(new OnSuccessListener<QuerySnapshot>(){
+
+            @Override
+            public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
+
+                for (DocumentSnapshot document : queryDocumentSnapshots.getDocuments()) {
+
+                    if(document.getBoolean("activo")){
+
+                        MarkerOptions marcador1 = new MarkerOptions();
+                        MarkerOptions marcador2 = new MarkerOptions();
+                        LatLng latLongMarcador1 = new LatLng(document.getDouble("latitudMarcador1"), document.getDouble("longitudMarcador1"));
+                        LatLng latLongMarcador2 = new LatLng(document.getDouble("latitudMarcador2"), document.getDouble("longitudMarcador2"));
+                        marcador1.position(latLongMarcador1);
+                        marcador2.position(latLongMarcador2);
+                        marcador1.title(document.getString("nombre"));
+                        marcador2.title(document.getString("nombre"));
+
+                        if(document.getString("nombre").equals("Trafico")){
+                            marcador1.icon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_car));
+                            marcador2.icon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_car));
+                            drawRoute(latLongMarcador1,latLongMarcador2,1);
+                        }
+                        if(document.getString("nombre").equals("Obras")){
+                            marcador1.icon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_obras));
+                            marcador2.icon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_obras));
+                            drawRoute(latLongMarcador1,latLongMarcador2,2);
+                        }
+                        if(document.getString("nombre").equals("Accidente")){
+                            marcador1.icon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_accidente));
+                            marcador2.icon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_accidente));
+                            drawRoute(latLongMarcador1,latLongMarcador2,3);
+                        }
+
+                        mMap.addMarker(marcador1);
+                        mMap.addMarker(marcador2);
+
+
+
+                    }
+                }
+            }
+        });
+    }
 
     private void obtenerMarcadores(){
 
         marcadorService.getAll().addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
             @Override
             public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
+                mMap.clear();
                 for (DocumentSnapshot document : queryDocumentSnapshots.getDocuments()) {
 
                     if(document.getBoolean("activo")){
@@ -535,11 +709,49 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         }
 
                         mMap.addMarker(markerOptions);
-                        // markerOptions.icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_marcador));
+
                     }
 
 
                 }
+
+            }
+        });
+    }
+
+    private void drawRoute(LatLng mOriginLatLng, LatLng mDestinationLatLng, int tipoRuta) {
+        googleApiService.getDirections(mOriginLatLng, mDestinationLatLng).enqueue(new Callback<String>() {
+            @Override
+            public void onResponse(Call<String> call, Response<String> response) {
+                try {
+
+                    JSONObject jsonObject = new JSONObject(response.body());
+                    JSONArray jsonArray = jsonObject.getJSONArray("routes");
+                    JSONObject route = jsonArray.getJSONObject(0);
+                    JSONObject polylines = route.getJSONObject("overview_polyline");
+                    String points = polylines.getString("points");
+                    mPolylineList = DecodePoints.decodePoly(points);
+                    mPolylineOptions = new PolylineOptions();
+
+                    if(tipoRuta==1){
+                        mPolylineOptions.color(Color.BLUE);
+                    }else{
+                        mPolylineOptions.color(Color.DKGRAY);
+                    }
+
+                    mPolylineOptions.width(8f);
+                    mPolylineOptions.startCap(new SquareCap());
+                    mPolylineOptions.jointType(JointType.ROUND);
+                    mPolylineOptions.addAll(mPolylineList);
+                    mMap.addPolyline(mPolylineOptions);
+
+                } catch (Exception e) {
+                    Log.d("Error", "Error encontrado " + e.getMessage());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<String> call, Throwable t) {
 
             }
         });
@@ -551,42 +763,56 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
         mMap.getUiSettings().setZoomControlsEnabled(true);
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
             return;
         }
         mMap.setMyLocationEnabled(true);
 
         obtenerMarcadores();
-
+        obtenerMarcadoresDobles();
 
         googleMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
-                // Creating a marker
+
                 MarkerOptions markerOptions = new MarkerOptions();
-
-                // Setting the position for the marker
                 markerOptions.position(latLng);
-
-                // Setting the title for the marker.
-                // This will be displayed on taping the marker
                 markerOptions.title(latLng.latitude + " : " + latLng.longitude);
-
-                // Clears the previously touched position
-               // googleMap.clear();
-
-                // Animating to the touched position
                 googleMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
 
-                // Placing a marker on the touched position
-               // googleMap.addMarker(markerOptions);
+                if(contadorMarcadorSimpleTrafico==0)
+                {
+                    mostrarDialogoPersonalizado(latLng);
+                    Log.d("listLatLng","contador: "+contadorMarcadorSimpleTrafico);
 
-                Toast.makeText(getApplicationContext(),latLng.latitude + " : " + latLng.longitude,Toast.LENGTH_LONG).show();
+                }else{
 
-                mostrarDialogoPersonalizado(latLng);
+                    Log.d("listLatLng","contador: "+contadorMarcadorSimpleTrafico);
+                    contadorMarcadorSimpleTrafico=0;
+                    listaMarcadoresTrafico.add(latLng);
+                    guardarMarcadorDoble("Trafico");
+
+                    for (LatLng latlng:listaMarcadoresTrafico) {
+
+                        markerOptions = new MarkerOptions();
+                        markerOptions.position(latlng);
+                        markerOptions.title(latlng.latitude + " : " + latlng.longitude);
+                        googleMap.addMarker(markerOptions);
+                    }
+
+                   drawRoute(listaMarcadoresTrafico.get(0),listaMarcadoresTrafico.get(1),1);
+                    listaMarcadoresTrafico.clear();
+
+                    //Toast.makeText(MainActivity.this, "Marcadores Almacenados", Toast.LENGTH_LONG).show();
+                    Log.d("listLatLng",listaMarcadoresTrafico.toString());
+
+
+                }
 
                 obtenerMarcadores();
-
+                obtenerMarcadoresDobles();
 
 
             }
@@ -649,8 +875,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void logout(){
         autenticacionService.CerrarSesion();
         Intent intent=new Intent(getApplicationContext(), LoginActivity.class);
-        startActivity(intent);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
         Toast.makeText(getApplicationContext(),"Has cerrado sesion",Toast.LENGTH_LONG).show();
     }
 

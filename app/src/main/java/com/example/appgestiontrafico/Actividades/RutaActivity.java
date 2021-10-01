@@ -16,9 +16,12 @@ import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -49,6 +52,7 @@ import com.google.firebase.firestore.QuerySnapshot;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import retrofit2.Call;
@@ -81,7 +85,11 @@ public class RutaActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Marker marker;
     private LatLng mCurrentLatLng;
 
+    private List<MarkerOptions> listaMarcadores=new ArrayList<>();;
+
     private AutenticacionService autenticacionService;
+
+    private Button btn_cancelar_ruta;
 
     LocationCallback mLocationCallback = new LocationCallback() {
 
@@ -123,6 +131,8 @@ public class RutaActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         txt_origen = findViewById(R.id.txtOrigen);
         txt_destino = findViewById(R.id.txtDestino);
+        btn_cancelar_ruta=findViewById(R.id.btn_cancelar_ruta);
+
         mMapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mMapFragment.getMapAsync(this);
 
@@ -143,6 +153,33 @@ public class RutaActivity extends AppCompatActivity implements OnMapReadyCallbac
         txt_origen.setText(mExtraOrigen);
         txt_destino.setText(mExtraDestino);
 
+        btn_cancelar_ruta.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent mainActivity=new Intent(getApplicationContext(),MainActivity.class);
+                mainActivity.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(mainActivity);
+
+            }
+        });
+
+        actualizarMarcadores();
+
+
+
+    }
+
+
+    private void actualizarMarcadores(){
+        final Handler handler= new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                //Toast.makeText(getApplicationContext(), "probando hilo cada 10 seg", Toast.LENGTH_SHORT).show();
+                obtenerMarcadores();
+                handler.postDelayed(this,5000);//se ejecutara cada 5 segundos
+            }
+        },5000);//empezara a ejecutarse después de 5 milisegundos
     }
 
     private void drawRoute() {
@@ -150,7 +187,7 @@ public class RutaActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void onResponse(Call<String> call, Response<String> response) {
                 try {
-
+                    Log.d("prueba","aca");
                     JSONObject jsonObject = new JSONObject(response.body());
                     JSONArray jsonArray = jsonObject.getJSONArray("routes");
                     JSONObject route = jsonArray.getJSONObject(0);
@@ -181,7 +218,13 @@ public class RutaActivity extends AppCompatActivity implements OnMapReadyCallbac
         marcadorService.getAll().addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
             @Override
             public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
+
+                mMap.clear();
+                drawRoute();
+
                 for (DocumentSnapshot document : queryDocumentSnapshots.getDocuments()) {
+
+                    if (document.getBoolean("activo")) {
 
                     Log.d("ERROR", document.getDouble("latitud") + "");
                     MarkerOptions markerOptions = new MarkerOptions();
@@ -199,7 +242,10 @@ public class RutaActivity extends AppCompatActivity implements OnMapReadyCallbac
                         markerOptions.icon(bitmapDescriptorFromVector(getApplicationContext(), R.drawable.ic_accidente));
                     }
 
+                    listaMarcadores.add(markerOptions);
                     mMap.addMarker(markerOptions);
+                    }
+
                 }
 
             }
@@ -229,14 +275,14 @@ public class RutaActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         obtenerMarcadores();
 
-        drawRoute();
+        //drawRoute();
     }
 
     private void logout(){
         autenticacionService.CerrarSesion();
         Intent intent=new Intent(getApplicationContext(), LoginActivity.class);
-        startActivity(intent);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
         Toast.makeText(getApplicationContext(),"Has cerrado sesion",Toast.LENGTH_LONG).show();
     }
 
